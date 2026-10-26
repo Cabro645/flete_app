@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}FleteApp Patagonia{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='app.css') }}" rel="stylesheet">
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+{% block nav %}
+{% if g.user %}
+<nav class="navbar navbar-dark {{ 'bg-primary' if g.user.role == 'client' else 'bg-slate' }} px-3">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{{ url_for('auth.index') }}">
+      🚚 FleteApp
+      <span class="fw-normal small opacity-75 ms-1">
+        {{ {'client': 'Cliente', 'transporter': 'Fletero', 'admin': 'Administración'}[g.user.role] }}
+      </span>
+    </a>
+    <div class="d-flex align-items-center gap-2">
+      <span class="text-white small d-none d-md-inline">{{ g.user.name }}</span>
+      <a href="{{ url_for('account.profile') }}" class="btn btn-outline-light btn-sm">Mi perfil</a>
+      <form method="post" action="{{ url_for('auth.logout') }}" class="m-0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-light btn-sm" type="submit">Cerrar sesión</button>
+      </form>
+    </div>
+  </div>
+</nav>
+{% endif %}
+{% endblock %}
+
+{% block flashes %}
+<div class="container mt-3">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category if category in ['success', 'danger', 'warning', 'info'] else 'info' }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+</div>
+{% endblock %}
+
+{% block content %}{% endblock %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

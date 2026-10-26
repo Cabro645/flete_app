@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Mi perfil · FleteApp{% endblock %}
+
+{% block content %}
+<div class="container my-4" style="max-width: 760px;">
+  <a href="{{ url_for('auth.index') }}" class="small">← Volver a mi panel</a>
+  <h1 class="h3 fw-bold mt-2 mb-3">Mi perfil</h1>
+
+  {% if user.role != 'admin' %}
+  <section class="panel p-3 mb-3">
+    <div class="d-flex justify-content-between align-items-center">
+      <h2 class="h6 fw-bold mb-0">Estado de verificación</h2>{{ m.verif_badge(user) }}
+    </div>
+    {% if user.verification_status == 'rejected' and user.verification_note %}
+      <div class="alert alert-danger py-2 small mt-2 mb-0"><strong>Motivo:</strong> {{ user.verification_note }}. Corregí los datos y volvé a guardar.</div>
+    {% elif user.verification_status == 'verified' %}
+      <p class="small text-muted mt-2 mb-0">Tu documentación fue aprobada. Si cambiás tu DNI o licencia, vuelve a revisión.</p>
+    {% else %}
+      {% set missing = [] %}
+      {% if not user.dni %}{% set _ = missing.append('número de DNI') %}{% endif %}
+      {% if not user.dni_file %}{% set _ = missing.append('foto o PDF del DNI') %}{% endif %}
+      {% if user.role == 'transporter' %}
+        {% if not user.license_number %}{% set _ = missing.append('número de licencia') %}{% endif %}
+        {% if not user.license_file %}{% set _ = missing.append('foto o PDF de la licencia') %}{% endif %}
+      {% endif %}
+      <p class="small text-muted mt-2 mb-0">
+        {% if missing %}Para que te verifiquemos falta: {{ missing|join(', ') }}.{% else %}Recibimos tu documentación y la vamos a revisar.{% endif %}
+      </p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('account.update_profile') }}" enctype="multipart/form-data" class="panel p-4 mb-3">
+    {{ m.csrf() }}
+    <h2 class="h5 fw-bold mb-3">Datos personales</h2>
+    <div class="row g-3">
+      <div class="col-md-6"><label class="form-label small fw-semibold" for="name">Nombre completo</label>
+        <input id="name" class="form-control" name="name" value="{{ form.get('name', user.name) }}" required></div>
+      <div class="col-md-6"><label class="form-label small fw-semibold" for="email">Email</label>
+        <input id="email" class="form-control" value="{{ user.email }}" disabled></div>
+      {% if user.role != 'admin' %}
+      <div class="col-md-6"><label class="form-label small fw-semibold" for="phone">WhatsApp</label>
+        <input id="phone" class="form-control" name="phone" value="{{ form.get('phone', user.phone or '') }}" placeholder="2944 123456" required>
+        <div class="form-text">Con código de área, sin 0 ni 15.</div></div>
+      <div class="col-md-6"><label class="form-label small fw-semibold" for="dni">DNI</label>
+        <input id="dni" class="form-control" name="dni" value="{{ form.get('dni', user.dni or '') }}" maxlength="20"></div>
+      <div class="col-12"><label class="form-label small fw-semibold" for="address">Domicilio</label>
+        <input id="address" class="form-control" name="address" value="{{ form.get('address', user.address or '') }}" maxlength="200"></div>
+      {% endif %}
+      {% if user.role == 'transporter' %}
+      <div class="col-12"><label class="form-label small fw-semibold" for="license_number">Número de licencia de conducir</label>
+        <input id="license_number" class="form-control" name="license_number" value="{{ form.get('license_number', user.license_number or '') }}" maxlength="50"></div>
+      {% endif %}
+    </div>
+
+    {% if user.role != 'admin' %}
+    <h2 class="h5 fw-bold mt-4 mb-1">Documentos</h2>
+    <p class="small text-muted">JPG, PNG o PDF, hasta 5 MB. Se guardan en un espacio privado: solo los ves vos y el equipo que verifica. No se muestran a otros usuarios.</p>
+    <div class="panel-flat p-3 mb-2">
+      <label class="form-label small fw-semibold" for="dni_file">Foto o PDF del DNI</label>
+      <input id="dni_file" type="file" class="form-control" name="dni_file" accept=".jpg,.jpeg,.png,.pdf">
+      {% if user.dni_file %}<div class="small mt-1 text-success">✓ Cargado · <a href="{{ url_for('account.document', user_id=user.id, kind='dni') }}" target="_blank" rel="noopener">ver archivo actual</a></div>{% endif %}
+    </div>
+    {% if user.role == 'transporter' %}
+    <div class="panel-flat p-3 mb-2">
+      <label class="form-label small fw-semibold" for="license_file">Licencia de conducir (frente y dorso en un solo archivo)</label>
+      <input id="license_file" type="file" class="form-control" name="license_file" accept=".jpg,.jpeg,.png,.pdf">
+      {% if user.license_file %}<div class="small mt-1 text-success">✓ Cargado · <a href="{{ url_for('account.document', user_id=user.id, kind='license') }}" target="_blank" rel="noopener">ver archivo actual</a></div>{% endif %}
+    </div>
+    {% endif %}
+    {% endif %}
+    <button class="btn btn-primary fw-semibold mt-3">Guardar cambios</button>
+  </form>
+
+  {% if user.role == 'transporter' %}
+  {% set v = user.primary_vehicle %}
+  <form method="post" action="{{ url_for('account.update_vehicle') }}" id="vehiculo" class="panel p-4 mb-3">
+    {{ m.csrf() }}
+    <h2 class="h5 fw-bold mb-1">Mi vehículo</h2>
+    <p class="small text-muted">Las medidas son las del espacio útil de la caja, en centímetros. Con esto filtramos las cargas que entran. La tarifa solo se usa para sugerirte un precio de referencia.</p>
+    <div class="row g-3">
+      <div class="col-12"><label class="form-label small fw-semibold" for="vehicle_name">Nombre</label>
+        <input id="vehicle_name" class="form-control" name="vehicle_name" maxlength="80" value="{{ v.name if v else '' }}" required></div>
+      <div class="col-6 col-md-3"><label class="form-label small fw-semibold" for="v_length">Largo (cm)</label><input id="v_length" type="number" step="any" class="form-control" name="length" value="{{ v.length|round|int if v else '' }}" required></div>
+      <div class="col-6 col-md-3"><label class="form-label small fw-semibold" for="v_width">Ancho (cm)</label><input id="v_width" type="number" step="any" class="form-control" name="width" value="{{ v.width|round|int if v else '' }}" required></div>
+      <div class="col-6 col-md-3"><label class="form-label small fw-semibold" for="v_height">Alto (cm)</label><input id="v_height" type="number" step="any" class="form-control" name="height" value="{{ v.height|round|int if v else '' }}" required></div>
+      <div class="col-6 col-md-3"><label class="form-label small fw-semibold" for="v_weight">Capacidad (kg)</label><input id="v_weight" type="number" step="any" class="form-control" name="max_weight_kg" value="{{ v.max_weight_kg|round|int if v else '' }}" required></div>
+      <div class="col-md-4"><label class="form-label small fw-semibold" for="v_rate">Tarifa por km (ARS)</label><input id="v_rate" type="number" class="form-control" name="rate_per_km" min="0" value="{{ v.rate_per_km if v else 0 }}" required></div>
+    </div>
+    <button class="btn btn-primary fw-semibold mt-3">Guardar vehículo</button>
+  </form>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('account.change_password') }}" class="panel p-4 mb-5">
+    {{ m.csrf() }}
+    <h2 class="h5 fw-bold mb-3">Cambiar contraseña</h2>
+    <div class="row g-3">
+      <div class="col-md-4"><label class="form-label small fw-semibold" for="cp">Actual</label><input id="cp" type="password" class="form-control" name="current_password" autocomplete="current-password" required></div>
+      <div class="col-md-4"><label class="form-label small fw-semibold" for="np">Nueva</label><input id="np" type="password" class="form-control" name="new_password" minlength="8" autocomplete="new-password" required></div>
+      <div class="col-md-4"><label class="form-label small fw-semibold" for="rp">Repetir nueva</label><input id="rp" type="password" class="form-control" name="confirm_password" minlength="8" autocomplete="new-password" required></div>
+    </div>
+    <button class="btn btn-outline-primary fw-semibold mt-3">Cambiar contraseña</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}FleteApp Patagonia · Fletes y carga compartida{% endblock %}
+{% block body_class %}hero d-flex align-items-center{% endblock %}
+{% block nav %}{% endblock %}
+{% block flashes %}{% endblock %}
+
+{% block content %}
+<main class="container py-5">
+  <div class="row align-items-center justify-content-between g-5">
+    <div class="col-lg-6 text-white">
+      <h1 class="display-5 fw-bold mb-3">🚚 FleteApp Patagonia</h1>
+      <p class="lead mb-4">Mové muebles, electrodomésticos, mascotas o mercadería entre Bariloche, El Bolsón y toda la Comarca Andina, con fleteros que ya hacen ese viaje.</p>
+      <div class="row g-3">
+        <div class="col-sm-6">
+          <div class="p-3 rounded border border-light border-opacity-25 bg-dark bg-opacity-50 h-100">
+            <h2 class="h5 fw-bold mb-1">🤝 Pagás el espacio que usás</h2>
+            <p class="small mb-0">Si tu carga viaja compartida, el precio se ajusta al lugar que ocupa en el vehículo.</p>
+          </div>
+        </div>
+        <div class="col-sm-6">
+          <div class="p-3 rounded border border-light border-opacity-25 bg-dark bg-opacity-50 h-100">
+            <h2 class="h5 fw-bold mb-1">🔒 Fleteros verificados</h2>
+            <p class="small mb-0">Revisamos el DNI y la licencia de cada fletero. Vas a ver la insignia ✓ Verificado en sus ofertas.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="panel p-4 shadow-lg">
+        <h2 class="h4 fw-bold text-primary text-center mb-3">Acceso</h2>
+        {% if errors %}
+          <div class="alert alert-danger py-2 small" role="alert">
+            {% if errors|length == 1 %}{{ errors[0] }}{% else %}<ul class="mb-0 ps-3">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+          </div>
+        {% endif %}
+
+        <ul class="nav nav-pills nav-fill mb-4 bg-light p-1 rounded" role="tablist">
+          <li class="nav-item"><button class="nav-link small fw-semibold {{ 'active' if active_tab == 'login' }}" data-bs-toggle="pill" data-bs-target="#login" type="button">Ingresar</button></li>
+          <li class="nav-item"><button class="nav-link small fw-semibold {{ 'active' if active_tab == 'reg-client' }}" data-bs-toggle="pill" data-bs-target="#reg-client" type="button">Soy cliente</button></li>
+          <li class="nav-item"><button class="nav-link small fw-semibold {{ 'active' if active_tab == 'reg-trans' }}" data-bs-toggle="pill" data-bs-target="#reg-trans" type="button">Soy fletero</button></li>
+        </ul>
+
+        <div class="tab-content">
+          <div class="tab-pane fade {{ 'show active' if active_tab == 'login' }}" id="login">
+            <form method="post" action="{{ url_for('auth.login') }}">
+              {{ m.csrf() }}
+              <div class="mb-3"><label class="form-label small fw-semibold" for="l-email">Email</label>
+                <input id="l-email" type="email" class="form-control" name="email" value="{{ form.get('email', '') if active_tab == 'login' }}" autocomplete="username" required></div>
+              <div class="mb-3"><label class="form-label small fw-semibold" for="l-pass">Contraseña</label>
+                <input id="l-pass" type="password" class="form-control" name="password" autocomplete="current-password" required></div>
+              <button type="submit" class="btn btn-primary w-100 fw-semibold py-2 mb-2">Ingresar</button>
+              <div class="text-center"><a href="{{ url_for('auth.forgot_password_form') }}" class="small text-muted">¿Olvidaste tu contraseña?</a></div>
+            </form>
+          </div>
+
+          <div class="tab-pane fade {{ 'show active' if active_tab == 'reg-client' }}" id="reg-client">
+            <form method="post" action="{{ url_for('auth.register_client') }}">
+              {{ m.csrf() }}
+              <div class="mb-2"><label class="form-label small fw-semibold" for="c-name">Nombre y apellido</label>
+                <input id="c-name" type="text" class="form-control" name="name" value="{{ form.get('name', '') if active_tab == 'reg-client' }}" autocomplete="name" required></div>
+              <div class="mb-2"><label class="form-label small fw-semibold" for="c-email">Email</label>
+                <input id="c-email" type="email" class="form-control" name="email" value="{{ form.get('email', '') if active_tab == 'reg-client' }}" autocomplete="email" required></div>
+              <div class="mb-2"><label class="form-label small fw-semibold" for="c-pass">Contraseña</label>
+                <input id="c-pass" type="password" class="form-control" name="password" minlength="8" autocomplete="new-password" required>
+                <div class="form-text">Mínimo 8 caracteres.</div></div>
+              <div class="mb-3"><label class="form-label small fw-semibold" for="c-phone">WhatsApp</label>
+                <input id="c-phone" type="tel" class="form-control" name="phone" value="{{ form.get('phone', '') if active_tab == 'reg-client' }}" placeholder="2944 123456" autocomplete="tel" required>
+                <div class="form-text">Con código de área, sin 0 ni 15.</div></div>
+              <button type="submit" class="btn btn-primary w-100 fw-semibold py-2">Crear cuenta de cliente</button>
+            </form>
+          </div>
+
+          <div class="tab-pane fade {{ 'show active' if active_tab == 'reg-trans' }}" id="reg-trans">
+            <form method="post" action="{{ url_for('auth.register_transporter') }}">
+              {{ m.csrf() }}
+              <div class="mb-2"><label class="form-label small fw-semibold" for="t-name">Nombre o empresa</label>
+                <input id="t-name" type="text" class="form-control" name="name" value="{{ form.get('name', '') if active_tab == 'reg-trans' }}" required></div>
+              <div class="mb-2"><label class="form-label small fw-semibold" for="t-email">Email</label>
+                <input id="t-email" type="email" class="form-control" name="email" value="{{ form.get('email', '') if active_tab == 'reg-trans' }}" autocomplete="email" required></div>
+              <div class="mb-2"><label class="form-label small fw-semibold" for="t-pass">Contraseña</label>
+                <input id="t-pass" type="password" class="form-control" name="password" minlength="8" autocomplete="new-password" required>
+                <div class="form-text">Mínimo 8 caracteres.</div></div>
+              <div class="mb-2"><label class="form-label small fw-semibold" for="t-phone">WhatsApp</label>
+                <input id="t-phone" type="tel" class="form-control" name="phone" value="{{ form.get('phone', '') if active_tab == 'reg-trans' }}" placeholder="2944 123456" autocomplete="tel" required></div>
+              <div class="mb-3"><label class="form-label small fw-semibold" for="t-vehicle">Vehículo</label>
+                <select id="t-vehicle" class="form-select" name="vehicle_type">
+                  {% set vt = form.get('vehicle_type', 'kangoo') %}
+                  <option value="moto" {{ 'selected' if vt == 'moto' }}>Moto / Motomandatario</option>
+                  <option value="auto" {{ 'selected' if vt == 'auto' }}>Auto / Baúl o asientos</option>
+                  <option value="carrito" {{ 'selected' if vt == 'carrito' }}>Carrito / Tráiler liviano</option>
+                  <option value="remolque" {{ 'selected' if vt == 'remolque' }}>Remolque / Acoplado</option>
+                  <option value="kangoo" {{ 'selected' if vt == 'kangoo' }}>Furgón chico (Kangoo / Fiorino)</option>
+                  <option value="pickup" {{ 'selected' if vt == 'pickup' }}>Camioneta 4x4 con caja</option>
+                  <option value="camion" {{ 'selected' if vt == 'camion' }}>Camión de carga</option>
+                </select>
+                <div class="form-text">Después podés ajustar las medidas exactas de tu caja.</div></div>
+              <button type="submit" class="btn btn-warning w-100 fw-semibold py-2">Crear cuenta de fletero</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}

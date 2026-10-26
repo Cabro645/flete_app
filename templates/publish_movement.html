@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Publicar trayecto · FleteApp{% endblock %}
+
+{% block content %}
+<div class="container my-4" style="max-width: 720px;">
+  <a href="{{ url_for('transporter.dashboard') }}" class="small">← Volver al panel</a>
+  <h1 class="h3 fw-bold mt-2 mb-3">Publicar trayecto / viaje en ruta</h1>
+  <p class="text-muted small">Avisá hacia dónde viajás para que los clientes vean tu oferta en la página principal.</p>
+
+  <form method="post" class="panel p-4">
+    {{ m.csrf() }}
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label small fw-semibold" for="origin">Origen</label>
+        <input id="origin" class="form-control" name="origin" placeholder="Ej: San Carlos de Bariloche" required maxlength="150">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label small fw-semibold" for="destination">Destino</label>
+        <input id="destination" class="form-control" name="destination" placeholder="Ej: El Bolsón" required maxlength="150">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label small fw-semibold" for="vehicle_type">Vehículo</label>
+        <select id="vehicle_type" class="form-select" name="vehicle_type" required>
+          <option value="moto">Moto / Motomandatario</option>
+          <option value="auto">Auto / Baúl o asientos</option>
+          <option value="carrito">Carrito / Tráiler liviano</option>
+          <option value="remolque">Remolque / Acoplado</option>
+          <option value="kangoo" selected>Furgón chico (Kangoo / Fiorino)</option>
+          <option value="pickup">Camioneta 4x4 con caja</option>
+          <option value="camion">Camión de carga</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label small fw-semibold" for="available_space">Espacio disponible</label>
+        <input id="available_space" class="form-control" name="available_space" placeholder="Ej: Baúl completo, Medio palet, Tráiler libre" required maxlength="150">
+      </div>
+      <div class="col-12">
+        <label class="form-label small fw-semibold" for="description">Detalles o horario estimado (opcional)</label>
+        <textarea id="description" class="form-control" name="description" rows="3" placeholder="Ej: Salgo el viernes a las 14 hs. Puedo llevar bultos o muebles medianos." maxlength="500"></textarea>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary fw-semibold mt-4">Publicar trayecto</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,6 @@
+Flask>=3.0,<4
+SQLAlchemy>=2.0,<2.2
+python-dotenv>=1.0
+gunicorn>=22.0; sys_platform != "win32"
+# waitress>=3.0   # alternativa a gunicorn en Windows
+# psycopg[binary]>=3.1   # solo si usás PostgreSQL

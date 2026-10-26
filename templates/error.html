@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Error {{ code }} · FleteApp{% endblock %}
+{% block body_class %}bg-light{% endblock %}
+{% block flashes %}{% endblock %}
+{% block content %}
+<div class="container py-5 text-center" style="max-width: 560px;">
+  <p class="display-3 fw-bold text-primary mb-2">{{ code }}</p>
+  <p class="lead">{{ message }}</p>
+  <a href="{{ url_for('auth.index') }}" class="btn btn-primary mt-2">Volver al inicio</a>
+</div>
+{% endblock %}

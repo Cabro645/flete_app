@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Panel de fletero · FleteApp{% endblock %}
+
+{% block content %}
+{% set accepted_count = my_offers|selectattr('status', 'equalto', 'accepted')|list|length %}
+<div class="container my-4" style="max-width: 980px;">
+
+  {% if vehicle %}
+  <div class="panel p-3 mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div>🚐 <strong>{{ vehicle.name }}</strong>
+      <span class="text-muted small">· caja {{ vehicle.length|round|int }}×{{ vehicle.width|round|int }}×{{ vehicle.height|round|int }} cm · hasta {{ vehicle.max_weight_kg|round|int }} kg · {{ vehicle.rate_per_km|ars }}/km</span></div>
+    <a href="{{ url_for('account.profile') }}#vehiculo" class="btn btn-outline-primary btn-sm">Editar vehículo</a>
+  </div>
+  {% else %}
+  <div class="alert alert-warning">Todavía no cargaste tu vehículo. <a href="{{ url_for('account.profile') }}#vehiculo">Cargalo en tu perfil</a> para ver qué cargas entran.</div>
+  {% endif %}
+
+  {% if not g.user.is_verified %}
+  <div class="alert alert-{{ 'warning' if g.user.verification_status == 'pending' else 'info' }} d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <span>{{ m.verif_badge(g.user) }}
+      {% if g.user.verification_status == 'pending' %}Estamos revisando tu documentación.
+      {% elif g.user.verification_status == 'rejected' %}Corregí tu documentación{% if g.user.verification_note %}: {{ g.user.verification_note }}{% endif %}
+      {% else %}Los clientes confían más en fleteros verificados. Cargá tu DNI y tu licencia.{% endif %}</span>
+    <a href="{{ url_for('account.profile') }}" class="btn btn-sm btn-outline-dark">Ir a mi perfil</a>
+  </div>
+  {% endif %}
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <ul class="nav nav-pills" role="tablist">
+      <li class="nav-item"><button class="nav-link active fw-semibold" data-bs-toggle="pill" data-bs-target="#tab-available" type="button">Cargas disponibles ({{ cards|length }})</button></li>
+      <li class="nav-item"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tab-mine" type="button">Mis ofertas ({{ my_offers|length }}){% if accepted_count %} <span class="badge text-bg-success">{{ accepted_count }} aceptada{{ 's' if accepted_count > 1 }}</span>{% endif %}</button></li>
+      <li class="nav-item"><button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#tab-movements" type="button">Mis trayectos ({{ my_movements|length }})</button></li>
+    </ul>
+    <a href="{{ url_for('transporter.new_movement_form') }}" class="btn btn-primary btn-sm fw-semibold">🚚 Publicar trayecto en ruta</a>
+  </div>
+
+  <div class="tab-content">
+    <!-- DISPONIBLES -->
+    <div class="tab-pane fade show active" id="tab-available">
+      {% if vehicle %}
+      <p class="small text-muted">
+        {% if show_all %}Mostrando todas las cargas, incluso las que no entran en tu vehículo. <a href="{{ url_for('transporter.dashboard') }}">Ver solo las que entran</a>
+        {% else %}Solo se muestran las cargas que entran en tu vehículo.{% if hidden %} Ocultamos {{ hidden }}. <a href="{{ url_for('transporter.dashboard', all=1) }}">Ver todas</a>{% endif %}{% endif %}
+      </p>
+      {% endif %}
+
+      {% for c in cards %}{% set s = c.s %}{% set mine = c.mine %}
+      <article class="panel p-3 mb-3">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div>
+            <h2 class="h5 fw-bold mb-1">{{ s.description }}</h2>
+            <div class="small text-muted">📍 {{ s.orig_address }} → 🎯 {{ s.dest_address }} · ≈ {{ s.distance_km }} km</div>
+          </div>
+          <span class="small text-muted">#{{ s.id }}</span>
+        </div>
+        <div class="small text-muted mt-2">
+          {{ m.modality(s.is_shared) }} · {{ s.total_weight_kg|round(1) }} kg · {{ s.total_volume_m3|round(2) }} m³ ({{ s.unit_length|round|int }}×{{ s.unit_width|round|int }}×{{ s.unit_height|round|int }} cm c/u)
+          {% if s.pickup_date %} · Retiro: {{ s.pickup_date|localdate }}{% endif %}
+          · Cliente: {{ s.client.name.split()[0] }}
+        </div>
+        {% if s.notes %}<div class="small mt-1"><em>{{ s.notes }}</em></div>{% endif %}
+
+        {% if c.fit %}
+          <div class="mt-2">{% if c.fit.ok %}<span class="badge text-bg-success">✓ Entra en tu vehículo</span>{% else %}<span class="badge text-bg-danger">✗ No entra</span> <span class="small text-muted">{{ c.fit.reason }}</span>{% endif %}</div>
+        {% endif %}
+        {% if c.ref %}<div class="small mt-1">Precio de referencia con tu tarifa: <strong>{{ c.ref|ars }}</strong> <span class="text-muted">(orientativo, vos decidís)</span></div>{% endif %}
+
+        <hr class="my-3">
+        {% if mine and mine.status == 'pending' %}
+          <div class="small mb-2">Tu oferta actual: <strong>{{ mine.price|ars }}</strong> {{ m.offer_badge(mine.status) }}</div>
+        {% endif %}
+        {% if not c.fit or c.fit.ok %}
+        <form method="post" action="{{ url_for('transporter.send_offer') }}" class="row g-2">
+          {{ m.csrf() }}<input type="hidden" name="shipment_id" value="{{ s.id }}">
+          <div class="col-md-3"><div class="input-group"><span class="input-group-text">$</span>
+            <input type="number" class="form-control" name="price" min="1" step="1" placeholder="Precio en ARS" value="{{ mine.price if mine and mine.status in ['pending', 'withdrawn'] else '' }}" required aria-label="Precio en pesos"></div></div>
+          <div class="col-md-6"><input class="form-control" name="message" maxlength="500" placeholder="Mensaje (opcional): día de salida, si ayudás a cargar…" value="{{ mine.message if mine and mine.message else '' }}" aria-label="Mensaje al cliente"></div>
+          <div class="col-md-3 d-grid"><button class="btn btn-primary fw-semibold">{{ 'Actualizar oferta' if mine and mine.status == 'pending' else 'Enviar oferta' }}</button></div>
+        </form>
+        {% endif %}
+      </article>
+      {% else %}
+        <div class="panel p-4 text-center text-muted">Por ahora no hay cargas disponibles{% if vehicle %} para tu vehículo{% endif %}. Volvé a mirar más tarde.</div>
+      {% endfor %}
+    </div>
+
+    <!-- MIS OFERTAS -->
+    <div class="tab-pane fade" id="tab-mine">
+      {% for o in my_offers %}{% set s = o.shipment %}
+      <article class="panel p-3 mb-3">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div>
+            <h2 class="h6 fw-bold mb-1">{{ s.description }}</h2>
+            <div class="small text-muted">📍 {{ s.orig_address }} → 🎯 {{ s.dest_address }} · ≈ {{ s.distance_km }} km</div>
+          </div>
+          <div class="text-end">{{ m.offer_badge(o.status) }}<div class="fw-bold">{{ o.price|ars }}</div></div>
+        </div>
+
+        {% if o.status == 'accepted' %}
+          <hr class="my-3">
+          {% if s.status == 'assigned' %}
+          <div class="panel-flat p-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div><strong>{{ s.client.name }}</strong>
+              {% if s.pickup_date %}<div class="small text-muted">Retiro: {{ s.pickup_date|localdate }}</div>{% endif %}
+              {% if s.notes %}<div class="small"><em>{{ s.notes }}</em></div>{% endif %}</div>
+            <div class="d-flex gap-2">
+              {{ m.whatsapp(s.client.phone, 'Hola ' ~ s.client.name ~ ', soy ' ~ g.user.name ~ ' de FleteApp. Aceptaste mi oferta por: ' ~ s.description ~ '. ¿Coordinamos el retiro?', 'Escribir al cliente') }}
+              <form method="post" action="{{ url_for('transporter.delivered', offer_id=o.id) }}" class="m-0" onsubmit="return confirm('¿Ya entregaste la carga?')">
+                {{ m.csrf() }}<button class="btn btn-outline-success btn-sm fw-semibold">Marcar entregado</button></form>
+            </div>
+          </div>
+          {% else %}
+            <div class="small text-muted">Envío {{ SHIPMENT_STATUS[s.status][0]|lower }}.</div>
+          {% endif %}
+        {% elif o.status == 'pending' %}
+          <form method="post" action="{{ url_for('transporter.withdraw', offer_id=o.id) }}" class="mt-2" onsubmit="return confirm('¿Retirar tu oferta?')">
+            {{ m.csrf() }}<button class="btn btn-outline-secondary btn-sm">Retirar oferta</button></form>
+        {% endif %}
+      </article>
+      {% else %}
+        <div class="panel p-4 text-center text-muted">Todavía no enviaste ofertas. Elegí una carga en «Cargas disponibles».</div>
+      {% endfor %}
+    </div>
+
+    <!-- MIS TRAYECTOS -->
+    <div class="tab-pane fade" id="tab-movements">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h6 fw-bold mb-0">Tus viajes o rutas anunciadas</h2>
+        <a href="{{ url_for('transporter.new_movement_form') }}" class="btn btn-outline-primary btn-sm">Publicar nuevo trayecto</a>
+      </div>
+      {% for mov in my_movements %}
+      <article class="panel p-3 mb-3">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div>
+            <h3 class="h6 fw-bold mb-1">📍 {{ mov.origin }} → 🎯 {{ mov.destination }}</h3>
+            <div class="small text-muted">Vehículo: <span class="text-uppercase fw-semibold">{{ mov.vehicle_type }}</span> · Espacio: {{ mov.available_space }}</div>
+            {% if mov.description %}<div class="small mt-1">“{{ mov.description }}”</div>{% endif %}
+          </div>
+          <div>
+            <span class="badge text-bg-{{ 'success' if mov.status == 'activo' else 'secondary' }}">{{ mov.status }}</span>
+            <div class="small text-muted text-end mt-1">{{ mov.created_at|localdt('%d/%m/%Y') }}</div>
+          </div>
+        </div>
+        {% if mov.status == 'activo' %}
+        <form method="post" action="{{ url_for('transporter.cancel_movement', mov_id=mov.id) }}" class="mt-2" onsubmit="return confirm('¿Cancelar este trayecto?')">
+          {{ m.csrf() }}<button class="btn btn-outline-danger btn-sm">Cancelar trayecto</button>
+        </form>
+        {% endif %}
+      </article>
+      {% else %}
+        <div class="panel p-4 text-center text-muted">No publicaste ningún trayecto todavía. Hacelo para que los clientes te vean en la página principal.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

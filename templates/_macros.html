@@ -1,0 +1,29 @@
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+
+{% macro shipment_badge(status) %}
+  {% set s = SHIPMENT_STATUS.get(status, (status, 'secondary')) %}
+  <span class="badge text-bg-{{ s[1] }}">{{ s[0] }}</span>
+{% endmacro %}
+
+{% macro offer_badge(status) %}
+  {% set s = OFFER_STATUS.get(status, (status, 'secondary')) %}
+  <span class="badge text-bg-{{ s[1] }}">{{ s[0] }}</span>
+{% endmacro %}
+
+{% macro verif_badge(user) %}
+  {% if user.verification_status == 'verified' %}<span class="badge text-bg-success">✓ Verificado</span>
+  {% elif user.verification_status == 'pending' %}<span class="badge text-bg-warning">En revisión</span>
+  {% elif user.verification_status == 'rejected' %}<span class="badge text-bg-danger">Documentación rechazada</span>
+  {% else %}<span class="badge text-bg-secondary">Sin verificar</span>{% endif %}
+{% endmacro %}
+
+{# Botón de WhatsApp. `text` es el mensaje prellenado. Si el teléfono no es válido, no se muestra. #}
+{% macro whatsapp(phone, text, label='WhatsApp') %}
+  {% if phone|wa %}
+    <a class="btn btn-success btn-sm" target="_blank" rel="noopener" href="https://wa.me/{{ phone|wa }}?text={{ text|urlencode }}">💬 {{ label }}</a>
+  {% else %}
+    <span class="text-muted small">Sin WhatsApp válido</span>
+  {% endif %}
+{% endmacro %}
+
+{% macro modality(is_shared) %}{{ '🤝 Compartido' if is_shared else '📦 Exclusivo' }}{% endmacro %}

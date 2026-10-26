@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Administración · FleteApp{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+  <h1 class="h3 fw-bold mb-3">Administración</h1>
+
+  <div class="row g-2 mb-4 text-center">
+    <div class="col-6 col-md-3"><div class="panel p-3"><div class="fs-3 fw-bold">{{ users_by_role.get('client', 0) }}</div><div class="small text-muted">Clientes</div></div></div>
+    <div class="col-6 col-md-3"><div class="panel p-3"><div class="fs-3 fw-bold">{{ users_by_role.get('transporter', 0) }}</div><div class="small text-muted">Fleteros</div></div></div>
+    <div class="col-6 col-md-3"><div class="panel p-3"><div class="fs-3 fw-bold">{{ shipments_by_status.get('searching', 0) }}</div><div class="small text-muted">Envíos buscando fletero</div></div></div>
+    <div class="col-6 col-md-3"><div class="panel p-3"><div class="fs-3 fw-bold">{{ shipments_by_status.get('delivered', 0) }}</div><div class="small text-muted">Envíos entregados</div></div></div>
+  </div>
+
+  <section class="panel p-3 mb-4">
+    <h2 class="h5 fw-bold">Verificaciones pendientes ({{ pending|length }})</h2>
+    {% if pending %}
+    <div class="table-responsive"><table class="table align-middle mb-0">
+      <thead><tr><th>Persona</th><th>Datos</th><th>Documentos</th><th style="min-width: 300px;">Decisión</th></tr></thead>
+      <tbody>
+      {% for u in pending %}
+      <tr>
+        <td><strong>{{ u.name }}</strong><div class="small text-muted">{{ 'Fletero' if u.role == 'transporter' else 'Cliente' }} · {{ u.email }}</div></td>
+        <td class="small">DNI: {{ u.dni or '—' }}{% if u.role == 'transporter' %}<br>Licencia: {{ u.license_number or '—' }}{% endif %}</td>
+        <td class="small">
+          {% if u.dni_file %}<a href="{{ url_for('account.document', user_id=u.id, kind='dni') }}" target="_blank" rel="noopener">DNI</a>{% endif %}
+          {% if u.license_file %} · <a href="{{ url_for('account.document', user_id=u.id, kind='license') }}" target="_blank" rel="noopener">Licencia</a>{% endif %}
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('admin.verify', user_id=u.id) }}" class="d-inline">{{ m.csrf() }}<button class="btn btn-success btn-sm">Verificar</button></form>
+          <form method="post" action="{{ url_for('admin.reject', user_id=u.id) }}" class="d-inline-flex gap-1 mt-1">{{ m.csrf() }}
+            <input class="form-control form-control-sm" name="note" placeholder="Motivo del rechazo" maxlength="300" required aria-label="Motivo del rechazo">
+            <button class="btn btn-outline-danger btn-sm text-nowrap">Rechazar</button></form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody></table></div>
+    {% else %}<p class="text-muted mb-0">No hay documentación esperando revisión.</p>{% endif %}
+  </section>
+
+  <section class="panel p-3 mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+      <h2 class="h5 fw-bold mb-0">Usuarios</h2>
+      <form method="get" class="d-flex gap-1">
+        <input class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="Nombre o email" aria-label="Buscar usuario">
+        <select class="form-select form-select-sm" name="role" aria-label="Filtrar por rol">
+          <option value="">Todos</option>
+          <option value="client" {{ 'selected' if role == 'client' }}>Clientes</option>
+          <option value="transporter" {{ 'selected' if role == 'transporter' }}>Fleteros</option>
+          <option value="admin" {{ 'selected' if role == 'admin' }}>Admins</option>
+        </select>
+        <button class="btn btn-primary btn-sm">Filtrar</button>
+      </form>
+    </div>
+    <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+      <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Verificación</th><th>Alta</th><th></th></tr></thead>
+      <tbody>
+      {% for u in users %}
+      <tr class="{{ 'text-muted' if not u.is_active }}">
+        <td>{{ u.name }}{% if not u.is_active %} <span class="badge text-bg-danger">Suspendido</span>{% endif %}</td>
+        <td class="small">{{ u.email }}</td>
+        <td class="small">{{ {'client': 'Cliente', 'transporter': 'Fletero', 'admin': 'Admin'}[u.role] }}</td>
+        <td>{% if u.role != 'admin' %}{{ m.verif_badge(u) }}{% endif %}</td>
+        <td class="small">{{ u.created_at|localdt('%d/%m/%Y') }}</td>
+        <td class="text-end">
+          {% if u.role != 'admin' %}
+          <form method="post" action="{{ url_for('admin.toggle_active', user_id=u.id) }}" class="d-inline" onsubmit="return confirm('¿Confirmás el cambio?')">
+            {{ m.csrf() }}<button class="btn btn-outline-secondary btn-sm">{{ 'Suspender' if u.is_active else 'Reactivar' }}</button></form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}<tr><td colspan="6" class="text-muted">Sin resultados.</td></tr>{% endfor %}
+      </tbody></table></div>
+  </section>
+
+  <section class="panel p-3 mb-5">
+    <h2 class="h5 fw-bold">Últimos envíos</h2>
+    <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+      <thead><tr><th>#</th><th>Carga</th><th>Ruta</th><th>Cliente</th><th>Estado</th><th>Publicado</th></tr></thead>
+      <tbody>
+      {% for s in shipments %}
+      <tr><td>{{ s.id }}</td><td>{{ s.description }}</td><td class="small">{{ s.orig_address }} → {{ s.dest_address }}</td><td class="small">{{ s.client.name }}</td>
+        <td>{{ m.shipment_badge(s.status) }}</td><td class="small">{{ s.created_at|localdt }}</td></tr>
+      {% else %}<tr><td colspan="6" class="text-muted">Todavía no hay envíos.</td></tr>{% endfor %}
+      </tbody></table></div>
+  </section>
+</div>
+{% endblock %}
